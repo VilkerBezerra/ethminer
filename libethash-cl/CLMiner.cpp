@@ -30,14 +30,7 @@ struct CLChannel: public LogChannel
     static const int verbosity = 2;
     static const bool debug = false;
 };
-struct CLSwitchChannel: public LogChannel
-{
-    static const char* name() { return EthOrange " cl"; }
-    static const int verbosity = 6;
-    static const bool debug = false;
-};
 #define cllog clog(CLChannel)
-#define clswitchlog clog(CLSwitchChannel)
 #define ETHCL_LOG(_contents) cllog << _contents
 
 /**
@@ -341,10 +334,11 @@ void CLMiner::workLoop()
                 }
                 else
                     startNonce = get_start_nonce();
-
-                clswitchlog << "Switch time"
-                    << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - workSwitchStart).count()
-                    << "ms.";
+                if (g_logVerbosity >= 6) {
+                    cllog << "Switch time"
+                        << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - workSwitchStart).count()
+                        << "ms.";
+                }
             }
 
             // Read results.
@@ -366,7 +360,14 @@ void CLMiner::workLoop()
             if (results.count) {
                 uint64_t nonce = current.startNonce + results.gid;
                 if (!s_noeval) {
+                    std::chrono::high_resolution_clock::time_point evalStart;
+                    if (g_logVerbosity >= 6)
+                        evalStart = std::chrono::high_resolution_clock::now();
                     Result r = EthashAux::eval(current.epoch, current.header, nonce);
+                    if (g_logVerbosity >= 6) {
+                        cllog << "Eval time " <<  std::chrono::duration_cast<std::chrono::microseconds>
+                                (std::chrono::high_resolution_clock::now() - evalStart).count() /1000.0 << " ms.";
+                    }
                     if (r.value <= current.boundary)
                         farm.submitProof(Solution{nonce, r.mixHash, current, current.header != w.header});
                     else {

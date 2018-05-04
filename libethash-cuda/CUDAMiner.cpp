@@ -484,7 +484,14 @@ void CUDAMiner::search(
                     farm.submitProof(Solution{nonces[i], mixes[i], w, m_new_work});
                 else
                 {
+                    std::chrono::high_resolution_clock::time_point evalStart;
+                    if (g_logVerbosity >= 6)
+                        evalStart = std::chrono::high_resolution_clock::now();
                     Result r = EthashAux::eval(w.epoch, w.header, nonces[i]);
+                    if (g_logVerbosity >= 6) {
+                        cudalog << "Eval time " <<  std::chrono::duration_cast<std::chrono::microseconds>
+                                (std::chrono::high_resolution_clock::now() - evalStart).count() / 1000.0 << " ms.";
+                    }
                     if (r.value <= w.boundary)
                         farm.submitProof(Solution{nonces[i], r.mixHash, w, m_new_work});
                     else
